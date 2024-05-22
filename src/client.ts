@@ -11,7 +11,14 @@ const config = [
   },
 ];
 
-const ws = new WebSocket("ws://localhost:4550");
+const wsUrl = Bun.env.PROXY_WS_URL;
+
+if (!wsUrl) {
+  console.error("PROXY_WS_URL is not set");
+  process.exit(1);
+}
+
+const ws = new WebSocket(wsUrl);
 
 ws.addEventListener("error", (err) => {
   console.log(err);
