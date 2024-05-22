@@ -3,25 +3,17 @@ import { randomUUID } from "crypto";
 
 console.log("Start proxy at port:", Bun.env.BUN_PORT ?? 3000);
 
-process.on("SIGINT", () => {
-  console.log("Ctrl-C was pressed");
-  process.exit();
-});
-
 const connectedClients = new Map<
   string,
   {
-    ws: ServerWebSocket;
+    ws: ServerWebSocket<unknown>;
     ip: string;
   }
 >();
 
-const requestResolvers = new Map<
-  string,
-  (value: Response | PromiseLike<Response>) => void
->();
+const requestResolvers = new Map<string, (value: Response) => void>();
 
-export default {
+Bun.serve({
   fetch: async (req, server) => {
     if (server.upgrade(req)) {
       return;
@@ -30,14 +22,20 @@ export default {
     const url = new URL(req.url);
     const target = connectedClients.get(url.hostname);
 
-    console.table(connectedClients);
-
     console.log(
-      `Proxy: ${url.hostname} -> ${target?.ip ?? "host not configured"}`,
+      `Proxying: ${url.hostname} -> ${target?.ip ?? "no client connected for host"}`,
     );
 
     if (!target) {
-      return Response.json({ error: "host not configured" }, { status: 404 });
+      return Response.json(
+        { error: "no client connected for host" },
+        {
+          status: 404,
+          headers: {
+            "X-ProxProx-Status": "error",
+          },
+        },
+      );
     }
 
     const requestId = randomUUID();
@@ -45,20 +43,13 @@ export default {
       requestResolvers.set(requestId, resolve);
     });
 
-    const request = {
-      headers: {
-        ...req.headers,
-        "x-bun": "true",
-      },
-    } satisfies FetchRequestInit;
-
     target.ws.send(
       JSON.stringify({
+        requestId,
         type: "request",
         hostname: url.hostname,
         url: req.url,
-        requestId,
-        request,
+        request: req,
       }),
     );
 
@@ -66,8 +57,6 @@ export default {
   },
   websocket: {
     message: async (ws, message) => {
-      console.log(message);
-
       if (typeof message !== "string") {
         return;
       }
@@ -101,10 +90,12 @@ export default {
 
         return;
       }
+
+      console.error("Unknown message format:", data);
     },
     open: async (ws) => {
       ws.send(JSON.stringify({ type: "connected" }));
-      console.log("Client connected but not registered");
+      console.log("Client connected but not registered yet");
     },
     close: async (ws, code, message) => {
       connectedClients.forEach((client, host) => {
@@ -117,4 +108,4 @@ export default {
   error: async (error) => {
     return Response.json({ error: error.message }, { status: 500 });
   },
-} satisfies Serve;
+});

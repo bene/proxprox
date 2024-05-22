@@ -3,8 +3,8 @@
   "module": "src/main.ts",
   "type": "module",
   "scripts": {
-    "dev:proxy": "bun run --watch src/proxy.ts",
-    "dev:client": "bun run --watch src/client.ts"
+    "dev:proxy": "bun run --watch src/cli.ts --mode proxy",
+    "dev:client": "bun run --watch src/cli.ts --mode client"
   },
   "devDependencies": {
     "@types/bun": "latest"

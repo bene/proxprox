@@ -1,10 +1,5 @@
 console.log("Start client");
 
-process.on("SIGINT", () => {
-  console.log("Ctrl-C was pressed");
-  process.exit();
-});
-
 const config = [
   {
     from: "home.bene.dev",
@@ -29,19 +24,24 @@ ws.addEventListener("open", () => {
 ws.addEventListener("message", async (message) => {
   const data = JSON.parse(message.data);
 
-  console.log(data);
+  if (data.type === "connected") {
+    console.log("Connected to proxy");
+    return;
+  }
 
   if (data.type === "request") {
-    const url = new URL(data.url);
+    const ogUrl = new URL(data.url);
     const configItem = config.find((c) => c.from === data.hostname);
-
-    console.log({ configItem: configItem });
 
     if (!configItem) {
       return;
     }
 
+    // Create url from original with new host
+    const url = new URL(data.url);
     url.host = configItem.to;
+
+    console.log(`Proxying: ${ogUrl} -> ${url}`);
 
     const res = await fetch(url, data.request);
     const buffer = await res.arrayBuffer();
@@ -58,5 +58,9 @@ ws.addEventListener("message", async (message) => {
         body: [...new Uint8Array(buffer)],
       }),
     );
+
+    return;
   }
+
+  console.error("Unknown message formt:", data);
 });
