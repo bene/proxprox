@@ -3,7 +3,8 @@ import { randomUUID } from "crypto";
 
 console.log("Start proxy at port:", Bun.env.BUN_PORT ?? 3000);
 
-const connectedClients = new Map<
+const hostToClientId = new Map<string, string>();
+const clients = new Map<
   string,
   {
     ws: ServerWebSocket<unknown>;
@@ -20,7 +21,8 @@ Bun.serve({
     }
 
     const url = new URL(req.url);
-    const target = connectedClients.get(url.hostname);
+    const targetClientId = hostToClientId.get(url.hostname);
+    const target = clients.get(targetClientId ?? "");
 
     console.log(
       `Proxying: ${url.hostname} -> ${target?.ip ?? "no client connected for host"}`,
@@ -69,11 +71,17 @@ Bun.serve({
       }
 
       if (data.type === "register") {
-        connectedClients.set(data.host, {
+        const clientId = randomUUID();
+        clients.set(clientId, {
           ws,
           ip: ws.remoteAddress,
         });
-        console.log("Client registered for:", data.host);
+
+        for (const host of data.hosts) {
+          hostToClientId.set(host, clientId);
+        }
+
+        console.log("Client registered for:", data.hosts);
         return;
       }
 
@@ -98,9 +106,14 @@ Bun.serve({
       console.log("Client connected but not registered yet");
     },
     close: async (ws, code, message) => {
-      connectedClients.forEach((client, host) => {
+      clients.forEach((client, clientId) => {
         if (client.ws === ws) {
-          connectedClients.delete(host);
+          clients.delete(clientId);
+          hostToClientId.forEach((value, key) => {
+            if (value === clientId) {
+              hostToClientId.delete(key);
+            }
+          });
         }
       });
     },
