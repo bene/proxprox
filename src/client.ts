@@ -11,11 +11,7 @@ const ws = new WebSocket(wsUrl);
 const config = [
   {
     from: "home.bene.dev",
-    to: "localhost:3000",
-  },
-  {
-    from: "home.localhost",
-    to: "localhost:3000",
+    to: "localhost:80",
   },
 ];
 
