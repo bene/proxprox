@@ -10,22 +10,29 @@ const { values } = parseArgs({
     mode: {
       type: "string",
       short: "m",
-      default: "proxy",
     },
   },
   strict: true,
   allowPositionals: true,
 });
 
-if (values.mode !== "client" && values.mode !== "proxy") {
+const mode = Bun.env.MODE ?? values.mode;
+
+if (!mode) {
+  console.error("No mode specified");
+  console.error("Pass -m [client|proxy] or set MODE env variable");
+  process.exit(1);
+}
+
+if (mode !== "client" && mode !== "proxy") {
   console.error("Invalid mode");
   process.exit(1);
 }
 
-if (values.mode === "client") {
+if (mode === "client") {
   import("./client.ts");
 }
 
-if (values.mode === "proxy") {
+if (mode === "proxy") {
   import("./proxy.ts");
 }
