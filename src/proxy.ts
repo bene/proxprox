@@ -45,13 +45,20 @@ Bun.serve({
       requestResolvers.set(requestId, resolve);
     });
 
+    const buffer = await req.arrayBuffer();
+    const body = Buffer.from(buffer).toString("base64");
+
     target.ws.send(
       JSON.stringify({
         requestId,
         type: "request",
         hostname: url.hostname,
         url: req.url,
-        request: req,
+        request: {
+          method: req.method,
+          headers: req.headers.toJSON(),
+        },
+        body,
       }),
     );
 
@@ -94,7 +101,9 @@ Bun.serve({
 
         requestResolvers.delete(data.requestId);
 
-        resolveRequest(new Response(new Uint8Array(data.body), data.response));
+        resolveRequest(
+          new Response(Buffer.from(data.body, "base64"), data.response),
+        );
 
         return;
       }

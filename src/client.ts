@@ -49,10 +49,14 @@ ws.addEventListener("message", async (message) => {
     const url = new URL(data.url);
     url.host = configItem.to;
 
-    console.log(`Proxying: ${ogUrl} -> ${url}`);
+    console.log(`${data.request.method?.padEnd(4, " ")} ${ogUrl} -> ${url}`);
 
-    const res = await fetch(url, data.request);
+    const res = await fetch(url, {
+      ...data.request,
+      body: data.body ? Buffer.from(data.body, "base64") : undefined,
+    });
     const buffer = await res.arrayBuffer();
+    const body = Buffer.from(buffer).toString("base64");
 
     ws.send(
       JSON.stringify({
@@ -63,7 +67,7 @@ ws.addEventListener("message", async (message) => {
           statusText: res.statusText,
           headers: res.headers,
         } satisfies Pick<Response, "status" | "statusText" | "headers">,
-        body: [...new Uint8Array(buffer)],
+        body,
       }),
     );
 
