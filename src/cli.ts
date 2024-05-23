@@ -9,6 +9,8 @@ const { values } = parseArgs({
   options: {
     mode: {
       type: "string",
+      short: "m",
+      default: "proxy",
     },
   },
   strict: true,
